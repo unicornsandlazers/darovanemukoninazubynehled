@@ -38,6 +38,20 @@ button{
     color:white;
 }
 
+.secondary{
+    background:#e0e0e0;
+    color:#424242;
+}
+
+.buttonRow{
+    display:flex;
+    gap:10px;
+}
+
+.buttonRow button{
+    margin-top:10px;
+}
+
 .progress{
     text-align:center;
     margin-bottom:20px;

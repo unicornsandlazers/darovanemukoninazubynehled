@@ -59,14 +59,26 @@ function doPost(e) {
       return json({ error: "Chybí jméno, dárek nebo hodnocení." });
     }
 
-    addRespondentIfMissing_(data.name.trim());
+    const name = data.name.trim();
+    addRespondentIfMissing_(name);
 
     const score = clampScore_(data.score);
     const category = categoryFromScore_(score);
     const comment = (data.comment || "").toString().trim();
+    const row = [new Date(), name, data.gift, category, score, comment];
 
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Responses");
-    sheet.appendRow([new Date(), data.name.trim(), data.gift, category, score, comment]);
+
+    // Pokud už pro tuhle dvojici jméno+dárek řádek existuje (např. člověk
+    // se vrátil tlačítkem "Zpět" a opravil hodnocení), přepíšeme ho místo
+    // přidání duplicitního řádku.
+    const existingRow = findResponseRow_(sheet, name.toLowerCase(), data.gift);
+
+    if (existingRow > 0) {
+      sheet.getRange(existingRow, 1, 1, row.length).setValues([row]);
+    } else {
+      sheet.appendRow(row);
+    }
 
     return json({ success: true });
   } catch (err) {
@@ -99,6 +111,25 @@ function getColumnValues_(sheetName, col) {
     .flat()
     .map(v => String(v).trim())
     .filter(v => v !== "");
+}
+
+function findResponseRow_(sheet, nameLower, gift) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return -1;
+
+  // B = jméno, C = dárek
+  const values = sheet.getRange(2, 2, lastRow - 1, 2).getValues();
+
+  for (let i = 0; i < values.length; i++) {
+    const rowName = String(values[i][0]).trim().toLowerCase();
+    const rowGift = String(values[i][1]).trim();
+
+    if (rowName === nameLower && rowGift === gift) {
+      return i + 2; // skutečné číslo řádku v listu (řádek 1 je hlavička)
+    }
+  }
+
+  return -1;
 }
 
 function getUserVotes_(nameLower) {

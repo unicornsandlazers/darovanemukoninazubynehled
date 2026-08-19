@@ -57,15 +57,28 @@
             <div class="sliderValue" id="sliderValue">0</div>
         </div>
 
-        <textarea id="commentInput" placeholder="Komentář (nepovinné)" rows="2"></textarea>
+        <textarea
+            id="commentInput"
+            placeholder="Komentář (nepovinné) — Enter odešle, Shift+Enter nový řádek"
+            rows="2"></textarea>
 
-        <button class="submit" id="submitVoteButton" onclick="submitVote()">
-            Odeslat hodnocení
-        </button>
+        <div class="buttonRow">
+            <button type="button" class="secondary" id="backButton" onclick="goBack()" style="display:none;">
+                ⬅ Zpět
+            </button>
+
+            <button class="submit" id="submitVoteButton" onclick="submitVote()">
+                Odeslat hodnocení
+            </button>
+        </div>
     </div>
 
     <div id="finishScreen" style="display:none;">
         <h2 id="finishTitle">Hotovo 🎉</h2>
+
+        <button type="button" class="secondary" id="finishBackButton" onclick="goBack()" style="display:none;">
+            ⬅ Opravit poslední hodnocení
+        </button>
 
         <p>Napadá tě ještě další dárek, který jsme v seznamu neměli?</p>
 
@@ -90,7 +103,10 @@
             <div class="sliderValue" id="extraSliderValue">0</div>
         </div>
 
-        <textarea id="extraComment" placeholder="Komentář (nepovinné)" rows="2"></textarea>
+        <textarea
+            id="extraComment"
+            placeholder="Komentář (nepovinné) — Enter odešle, Shift+Enter nový řádek"
+            rows="2"></textarea>
 
         <button class="submit" id="addExtraButton" onclick="saveExtraGift()">
             Přidat

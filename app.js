@@ -7,6 +7,7 @@ let currentUser = "";
 let respondents = [];
 let pendingCount = 0;
 let failedSaves = [];
+let history = [];
 
 // Dárky se stahují na pozadí hned při otevření appky (souběžně s tím, jak
 // si člověk vybírá jméno), aby po kliknutí na "Začít" nebylo třeba čekat.
@@ -191,7 +192,9 @@ function submitVote() {
     // ať se nečeká zbytečně po každém kliknutí.
     saveResponse({ name: currentUser, gift: gift, score: score, comment: comment });
 
+    history.push({ gift: gift, score: score, comment: comment });
     queue.shift();
+    updateBackButtons();
 
     if (queue.length === 0) {
         document.getElementById("surveyScreen").style.display = "none";
@@ -200,6 +203,34 @@ function submitVote() {
         resetVoteControls();
         showGift();
     }
+}
+
+// Vrátí appku na naposledy ohodnocený dárek, ať se dá hodnocení opravit.
+// Odeslání stejného jména+dárku znovu ho v Sheetu jen přepíše (viz
+// Code.gs), takže tím nevznikne duplicitní řádek.
+function goBack() {
+
+    if (history.length === 0) return;
+
+    const prev = history.pop();
+    queue.unshift(prev.gift);
+    updateBackButtons();
+
+    document.getElementById("finishScreen").style.display = "none";
+    document.getElementById("surveyScreen").style.display = "block";
+
+    showGift();
+
+    const slider = document.getElementById("scoreSlider");
+    slider.value = prev.score;
+    updateSliderValue(slider, "sliderValue");
+    document.getElementById("commentInput").value = prev.comment;
+}
+
+function updateBackButtons() {
+    const display = history.length > 0 ? "block" : "none";
+    document.getElementById("backButton").style.display = display;
+    document.getElementById("finishBackButton").style.display = display;
 }
 
 function showFinishScreen(title) {
@@ -230,5 +261,17 @@ function saveExtraGift() {
     updateSliderValue(scoreSlider, "extraSliderValue");
     commentInput.value = "";
 }
+
+function submitOnEnter(inputId, submitFn) {
+    document.getElementById(inputId).addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            submitFn();
+        }
+    });
+}
+
+submitOnEnter("commentInput", submitVote);
+submitOnEnter("extraComment", saveExtraGift);
 
 loadRespondents();
