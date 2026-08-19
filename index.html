@@ -30,6 +30,10 @@
             Začít
         </button>
 
+        <button type="button" class="secondary" id="reviewButton" onclick="openReview()">
+            📋 Zobrazit / upravit moje odpovědi
+        </button>
+
         <p id="loginMessage" class="message"></p>
     </div>
 
@@ -57,6 +61,8 @@
             <div class="sliderValue" id="sliderValue">0</div>
         </div>
 
+        <p class="hint">Posun posuvníku rovnou odešle hodnocení a posune tě na další dárek.</p>
+
         <textarea
             id="commentInput"
             placeholder="Komentář (nepovinné) — Enter odešle, Shift+Enter nový řádek"
@@ -67,10 +73,24 @@
                 ⬅ Zpět
             </button>
 
+            <button type="button" class="secondary" id="cancelEditButton" onclick="cancelEdit()" style="display:none;">
+                Zrušit úpravu
+            </button>
+
             <button class="submit" id="submitVoteButton" onclick="submitVote()">
                 Odeslat hodnocení
             </button>
         </div>
+    </div>
+
+    <div id="reviewScreen" style="display:none;">
+        <h2>Tvoje odpovědi</h2>
+
+        <div id="reviewList"></div>
+
+        <button type="button" class="secondary" onclick="location.reload()">
+            ↩ Zpět na úvod
+        </button>
     </div>
 
     <div id="finishScreen" style="display:none;">
