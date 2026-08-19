@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rodinný průzkum dárků</title>
+    style.css
+</head>
+<body>
+
+<div class="container">
+
+    <div id="loginScreen">
+        <h1>Rodinný průzkum dárků</h1>
+
+        <label>Jak se jmenuješ?</label>
+
+        <input
+            type="text"
+            id="nameInput"
+            list="respondentList"
+            placeholder="Začni psát jméno">
+
+        <datalist id="respondentList"></datalist>
+
+        <button onclick="startSurvey()">
+            Začít
+        </button>
+    </div>
+
+    <div id="surveyScreen" style="display:none;">
+        <div class="progress" id="progress"></div>
+
+        <h2 id="giftName"></h2>
+
+        <button class="favorite" onclick="vote('Oblíbené')">
+            ❤️ Oblíbený dárek
+        </button>
+
+        <button class="bad" onclick="vote('Nevhodné')">
+            ❌ Nevhodný dárek
+        </button>
+
+        <button class="neutral" onclick="vote('Nemám názor')">
+            ➖ Nemám názor
+        </button>
+    </div>
+
+    <div id="finishScreen" style="display:none;">
+        <h2>Hotovo 🎉</h2>
+
+        <p>Máš ještě další tip?</p>
+
+        <input id="extraGift" placeholder="Název dárku">
+
+        <select id="extraType">
+            <option>Oblíbené</option>
+            <option>Nevhodné</option>
+        </select>
+
+        <button onclick="saveExtraGift()">
+            Přidat
+        </button>
+    </div>
+
+</div>
+
+app.js
+
+</body>
+</html>
