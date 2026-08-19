@@ -36,16 +36,29 @@
 
         <h2 id="giftName"></h2>
 
-        <button class="favorite" onclick="vote('Oblíbené')">
-            ❤️ Oblíbený dárek
-        </button>
+        <div class="sliderWrap">
+            <input
+                type="range"
+                id="scoreSlider"
+                min="-10"
+                max="10"
+                step="1"
+                value="0"
+                oninput="updateSliderValue(this, 'sliderValue')">
 
-        <button class="bad" onclick="vote('Nevhodné')">
-            ❌ Nevhodný dárek
-        </button>
+            <div class="sliderLabels">
+                <span>-10 Nevhodné</span>
+                <span>0 Nemám názor</span>
+                <span>+10 Ideální</span>
+            </div>
 
-        <button class="neutral" onclick="vote('Nemám názor')">
-            ➖ Nemám názor
+            <div class="sliderValue" id="sliderValue">0</div>
+        </div>
+
+        <textarea id="commentInput" placeholder="Komentář (nepovinné)" rows="2"></textarea>
+
+        <button class="submit" id="submitVoteButton" onclick="submitVote()">
+            Odeslat hodnocení
         </button>
     </div>
 
@@ -56,12 +69,28 @@
 
         <input id="extraGift" placeholder="Název dárku" autocomplete="off">
 
-        <select id="extraType">
-            <option value="Oblíbené">Oblíbený dárek</option>
-            <option value="Nevhodné">Nevhodný dárek</option>
-        </select>
+        <div class="sliderWrap">
+            <input
+                type="range"
+                id="extraScoreSlider"
+                min="-10"
+                max="10"
+                step="1"
+                value="0"
+                oninput="updateSliderValue(this, 'extraSliderValue')">
 
-        <button id="addExtraButton" onclick="saveExtraGift()">
+            <div class="sliderLabels">
+                <span>-10 Nevhodné</span>
+                <span>0 Nemám názor</span>
+                <span>+10 Ideální</span>
+            </div>
+
+            <div class="sliderValue" id="extraSliderValue">0</div>
+        </div>
+
+        <textarea id="extraComment" placeholder="Komentář (nepovinné)" rows="2"></textarea>
+
+        <button class="submit" id="addExtraButton" onclick="saveExtraGift()">
             Přidat
         </button>
 

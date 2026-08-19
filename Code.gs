@@ -4,7 +4,9 @@
  * Očekávaná struktura Google Sheetu (3 listy):
  * - "Respondents": sloupec A = jméno respondenta (řádek 1 = hlavička)
  * - "Gifts":       sloupec A = název dárku (řádek 1 = hlavička)
- * - "Responses":   A = časová značka, B = jméno, C = dárek, D = kategorie
+ * - "Responses":   A = časová značka, B = jméno, C = dárek,
+ *                  D = kategorie (odvozená ze skóre), E = skóre (-10..10),
+ *                  F = komentář
  *
  * Po každé úpravě tohoto souboru je potřeba v Apps Scriptu udělat
  * Deploy > Manage deployments > (tužka) Edit > New version > Deploy,
@@ -50,14 +52,18 @@ function doPost(e) {
       return json({ success: true });
     }
 
-    if (!data.name || !data.gift || !data.category) {
-      return json({ error: "Chybí jméno, dárek nebo kategorie." });
+    if (!data.name || !data.gift || typeof data.score !== "number" || isNaN(data.score)) {
+      return json({ error: "Chybí jméno, dárek nebo hodnocení." });
     }
 
     addRespondentIfMissing_(data.name.trim());
 
+    const score = clampScore_(data.score);
+    const category = categoryFromScore_(score);
+    const comment = (data.comment || "").toString().trim();
+
     const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Responses");
-    sheet.appendRow([new Date(), data.name.trim(), data.gift, data.category]);
+    sheet.appendRow([new Date(), data.name.trim(), data.gift, category, score, comment]);
 
     return json({ success: true });
   } catch (err) {
@@ -65,6 +71,17 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function clampScore_(score) {
+  const rounded = Math.round(score);
+  return Math.max(-10, Math.min(10, rounded));
+}
+
+function categoryFromScore_(score) {
+  if (score > 0) return "Oblíbené";
+  if (score < 0) return "Nevhodné";
+  return "Nemám názor";
 }
 
 function getColumnValues_(sheetName, col) {
