@@ -43,6 +43,10 @@ function doGet(e) {
       return json(getGiftStats_());
     }
 
+    if (action === "highlights") {
+      return json(getHighlights_());
+    }
+
     return json({ error: "Unknown action" });
   } catch (err) {
     return json({ error: String(err) });
@@ -259,6 +263,68 @@ function getGiftStats_() {
   withoutVotes.sort((a, b) => a.gift.localeCompare(b.gift, "cs"));
 
   return withVotes.concat(withoutVotes);
+}
+
+// Top 5 nejoblíbenějších, nejméně oblíbených a nejkontroverznějších
+// dárků (nejvyšší rozptyl hodnocení = rodina se na nich nejvíc neshodla).
+// Kontroverzní počítáme jen z dárků aspoň se 2 hlasy, jinak rozptyl
+// nemá smysl.
+function getHighlights_() {
+  const gifts = getColumnValues_("Gifts", 1);
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Responses");
+
+  const scoresByGift = {};
+
+  if (sheet) {
+    const lastRow = sheet.getLastRow();
+    if (lastRow >= 2) {
+      // C = dárek, D = kategorie, E = skóre
+      const values = sheet.getRange(2, 3, lastRow - 1, 3).getValues();
+
+      values.forEach(row => {
+        const gift = String(row[0]).trim();
+        const score = Number(row[2]);
+
+        if (!gift || isNaN(score)) return;
+        if (!scoresByGift[gift]) scoresByGift[gift] = [];
+        scoresByGift[gift].push(score);
+      });
+    }
+  }
+
+  const stats = gifts
+    .map(gift => {
+      const scores = scoresByGift[gift];
+      if (!scores || scores.length === 0) return null;
+
+      const sum = scores.reduce((a, b) => a + b, 0);
+      const avg = sum / scores.length;
+      const variance = scores.reduce((acc, s) => acc + Math.pow(s - avg, 2), 0) / scores.length;
+
+      return {
+        gift: gift,
+        avgScore: avg,
+        voteCount: scores.length,
+        min: Math.min.apply(null, scores),
+        max: Math.max.apply(null, scores),
+        stdev: Math.sqrt(variance)
+      };
+    })
+    .filter(item => item !== null);
+
+  const topFavorite = stats.slice().sort((a, b) => b.avgScore - a.avgScore).slice(0, 5);
+  const topUnpopular = stats.slice().sort((a, b) => a.avgScore - b.avgScore).slice(0, 5);
+
+  const topControversial = stats
+    .filter(item => item.voteCount >= 2)
+    .sort((a, b) => b.stdev - a.stdev)
+    .slice(0, 5);
+
+  return {
+    topFavorite: topFavorite,
+    topUnpopular: topUnpopular,
+    topControversial: topControversial
+  };
 }
 
 function json(data) {

@@ -78,6 +78,16 @@ h2{
     margin:0 0 20px;
 }
 
+h3{
+    font-size:14px;
+    font-weight:600;
+    margin:24px 0 4px;
+}
+
+h3:first-of-type{
+    margin-top:4px;
+}
+
 label{
     display:block;
     font-size:13px;
@@ -330,4 +340,26 @@ input[type="range"]:disabled{
     margin-top:10px;
     padding:8px 14px;
     font-size:13px;
+}
+
+.highlightRow{
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    padding:8px 0;
+    border-bottom:1px solid var(--border);
+}
+
+.highlightRow:last-child{
+    border-bottom:none;
+}
+
+.highlightRank{
+    font-weight:700;
+    color:var(--text-muted);
+    min-width:16px;
+}
+
+.highlightBody{
+    flex:1;
 }

@@ -363,6 +363,64 @@ async function onPersonSelected() {
     }
 }
 
+async function showHighlights() {
+
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("highlightsScreen").style.display = "block";
+
+    const listIds = ["topFavoriteList", "topUnpopularList", "topControversialList"];
+    listIds.forEach(id => {
+        document.getElementById(id).innerHTML = "<p class=\"hint\">Načítám…</p>";
+    });
+
+    try {
+        const response = await fetch(`${API}?action=highlights`);
+        const data = await response.json();
+
+        renderHighlightList("topFavoriteList", data.topFavorite, item =>
+            `${formatScore(item.avgScore)} · ${voteCountLabel(item.voteCount)}`);
+
+        renderHighlightList("topUnpopularList", data.topUnpopular, item =>
+            `${formatScore(item.avgScore)} · ${voteCountLabel(item.voteCount)}`);
+
+        renderHighlightList("topControversialList", data.topControversial, item =>
+            `hodnocení od ${item.min} do ${item.max} · ${voteCountLabel(item.voteCount)}`);
+    } catch (err) {
+        console.error(err);
+        listIds.forEach(id => {
+            document.getElementById(id).innerHTML = "<p class=\"message\">Nepodařilo se načíst.</p>";
+        });
+    }
+}
+
+function formatScore(score) {
+    return (score > 0 ? "+" : "") + score.toFixed(1);
+}
+
+function renderHighlightList(containerId, items, subtitleFn) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = "";
+
+    if (!items || items.length === 0) {
+        container.innerHTML = "<p class=\"hint\">Zatím není dost hlasů.</p>";
+        return;
+    }
+
+    items.forEach((item, index) => {
+        const row = document.createElement("div");
+        row.className = "highlightRow";
+
+        row.innerHTML =
+            `<span class="highlightRank">${index + 1}.</span>` +
+            `<div class="highlightBody">` +
+                `<div class="reviewGift">${escapeHtml(item.gift)}</div>` +
+                `<div class="hint" style="margin-top:2px;">${subtitleFn(item)}</div>` +
+            `</div>`;
+
+        container.appendChild(row);
+    });
+}
+
 function showAddGiftScreen() {
     document.getElementById("loginScreen").style.display = "none";
     document.getElementById("addGiftScreen").style.display = "block";
