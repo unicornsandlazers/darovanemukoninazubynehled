@@ -61,7 +61,9 @@
             <div class="sliderValue" id="sliderValue">0</div>
         </div>
 
-        <p class="hint">Posun posuvníku rovnou odešle hodnocení a posune tě na další dárek.</p>
+        <p class="hint" id="voteHint">Posun posuvníku odešle hodnocení a posune tě na další dárek.</p>
+
+        <div class="voteConfirm" id="voteConfirm" style="display:none;"></div>
 
         <textarea
             id="commentInput"
@@ -75,10 +77,6 @@
 
             <button type="button" class="secondary" id="cancelEditButton" onclick="cancelEdit()" style="display:none;">
                 Zrušit úpravu
-            </button>
-
-            <button class="submit" id="submitVoteButton" onclick="submitVote()">
-                Odeslat hodnocení
             </button>
         </div>
     </div>

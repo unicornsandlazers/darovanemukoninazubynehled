@@ -104,6 +104,17 @@ input[type="range"]{
     margin:8px 0 0;
 }
 
+.voteConfirm{
+    text-align:center;
+    font-size:18px;
+    font-weight:bold;
+    color:#4caf50;
+    background:#e8f5e9;
+    border-radius:8px;
+    padding:12px;
+    margin-top:10px;
+}
+
 .reviewItem{
     background:white;
     border-radius:8px;
