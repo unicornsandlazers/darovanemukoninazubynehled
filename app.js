@@ -106,11 +106,29 @@ function showGift() {
         `${allGifts.length - queue.length + 1} / ${allGifts.length}`;
 }
 
-async function vote(category) {
+function updateSliderValue(slider, labelId) {
+    const value = Number(slider.value);
+    const label = document.getElementById(labelId);
+
+    label.textContent = value;
+    label.style.color = value > 0 ? "#4caf50" : value < 0 ? "#d32f2f" : "#616161";
+}
+
+function resetVoteControls() {
+    const slider = document.getElementById("scoreSlider");
+    slider.value = 0;
+    updateSliderValue(slider, "sliderValue");
+    document.getElementById("commentInput").value = "";
+}
+
+async function submitVote() {
 
     const gift = queue[0];
+    const score = Number(document.getElementById("scoreSlider").value);
+    const comment = document.getElementById("commentInput").value.trim();
+    const button = document.getElementById("submitVoteButton");
 
-    disableVoteButtons(true);
+    button.disabled = true;
 
     try {
         await fetch(API, {
@@ -118,7 +136,8 @@ async function vote(category) {
             body: JSON.stringify({
                 name: currentUser,
                 gift: gift,
-                category: category
+                score: score,
+                comment: comment
             })
         });
 
@@ -128,20 +147,15 @@ async function vote(category) {
             document.getElementById("surveyScreen").style.display = "none";
             showFinishScreen("Hotovo 🎉");
         } else {
+            resetVoteControls();
             showGift();
         }
     } catch (err) {
         console.error(err);
         alert("Nepodařilo se uložit odpověď, zkus to prosím znovu.");
     } finally {
-        disableVoteButtons(false);
+        button.disabled = false;
     }
-}
-
-function disableVoteButtons(disabled) {
-    document.querySelectorAll("#surveyScreen button").forEach(btn => {
-        btn.disabled = disabled;
-    });
 }
 
 function showFinishScreen(title) {
@@ -153,7 +167,10 @@ async function saveExtraGift() {
 
     const giftInput = document.getElementById("extraGift");
     const gift = giftInput.value.trim();
-    const category = document.getElementById("extraType").value;
+    const scoreSlider = document.getElementById("extraScoreSlider");
+    const score = Number(scoreSlider.value);
+    const commentInput = document.getElementById("extraComment");
+    const comment = commentInput.value.trim();
     const message = document.getElementById("extraMessage");
     const button = document.getElementById("addExtraButton");
 
@@ -170,12 +187,16 @@ async function saveExtraGift() {
             body: JSON.stringify({
                 name: currentUser,
                 gift: gift,
-                category: category
+                score: score,
+                comment: comment
             })
         });
 
         message.textContent = `Přidáno: "${gift}" ✅`;
         giftInput.value = "";
+        scoreSlider.value = 0;
+        updateSliderValue(scoreSlider, "extraSliderValue");
+        commentInput.value = "";
     } catch (err) {
         console.error(err);
         message.textContent = "Nepodařilo se uložit, zkus to prosím znovu.";
