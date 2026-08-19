@@ -307,7 +307,10 @@ function getHighlights_() {
         voteCount: scores.length,
         min: Math.min.apply(null, scores),
         max: Math.max.apply(null, scores),
-        stdev: Math.sqrt(variance)
+        stdev: Math.sqrt(variance),
+        // Rozložení hlasů na škále -10..10, jen hodnoty s aspoň 1 hlasem
+        // (pro vizualizaci rozmístění hodnocení na obrazovce Zajímavosti).
+        histogram: buildHistogram_(scores)
       };
     })
     .filter(item => item !== null);
@@ -325,6 +328,16 @@ function getHighlights_() {
     topUnpopular: topUnpopular,
     topControversial: topControversial
   };
+}
+
+function buildHistogram_(scores) {
+  const counts = {};
+  scores.forEach(s => { counts[s] = (counts[s] || 0) + 1; });
+
+  return Object.keys(counts).map(k => ({
+    score: Number(k),
+    count: counts[k]
+  }));
 }
 
 function json(data) {
