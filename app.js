@@ -413,12 +413,34 @@ function renderHighlightList(containerId, items, subtitleFn) {
         row.innerHTML =
             `<span class="highlightRank">${index + 1}.</span>` +
             `<div class="highlightBody">` +
-                `<div class="reviewGift">${escapeHtml(item.gift)}</div>` +
-                `<div class="hint" style="margin-top:2px;">${subtitleFn(item)}</div>` +
+                `<div class="highlightGift">${escapeHtml(item.gift)}</div>` +
+                `<div class="hint" style="margin-top:2px;text-align:left;">${subtitleFn(item)}</div>` +
+                renderDistribution(item.histogram) +
             `</div>`;
 
         container.appendChild(row);
     });
+}
+
+// Vizualizace rozmístění hlasů na škále -10..+10 — puntík na místě dané
+// hodnoty, velikost puntíku podle toho, kolik lidí zrovna tolik dalo.
+function renderDistribution(histogram) {
+    if (!histogram || histogram.length === 0) return "";
+
+    const maxCount = Math.max(...histogram.map(h => h.count));
+    const minSize = 8;
+    const maxSize = 22;
+
+    const dots = histogram.map(h => {
+        const leftPct = ((h.score + 10) / 20) * 100;
+        const size = minSize + (h.count / maxCount) * (maxSize - minSize);
+        const sign = h.score > 0 ? "+" : "";
+        const title = `${sign}${h.score}: ${voteCountLabel(h.count)}`;
+
+        return `<div class="distDot" style="left:${leftPct}%; width:${size}px; height:${size}px;" title="${title}"></div>`;
+    }).join("");
+
+    return `<div class="distStrip">${dots}</div>`;
 }
 
 function showAddGiftScreen() {

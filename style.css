@@ -79,9 +79,10 @@ h2{
 }
 
 h3{
-    font-size:14px;
-    font-weight:600;
-    margin:24px 0 4px;
+    font-size:18px;
+    font-weight:700;
+    letter-spacing:-0.01em;
+    margin:28px 0 10px;
 }
 
 h3:first-of-type{
@@ -346,7 +347,7 @@ input[type="range"]:disabled{
     display:flex;
     align-items:flex-start;
     gap:10px;
-    padding:8px 0;
+    padding:12px 0;
     border-bottom:1px solid var(--border);
 }
 
@@ -362,4 +363,28 @@ input[type="range"]:disabled{
 
 .highlightBody{
     flex:1;
+    min-width:0;
+}
+
+.highlightGift{
+    font-size:14px;
+    font-weight:600;
+}
+
+.distStrip{
+    position:relative;
+    height:22px;
+    border-radius:999px;
+    background:linear-gradient(to right, var(--negative), var(--neutral) 50%, var(--positive));
+    opacity:0.85;
+    margin-top:10px;
+}
+
+.distDot{
+    position:absolute;
+    top:50%;
+    transform:translate(-50%,-50%);
+    border-radius:50%;
+    background:rgba(43,42,39,0.55);
+    border:1.5px solid rgba(255,255,255,0.85);
 }
