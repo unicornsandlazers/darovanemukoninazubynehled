@@ -35,14 +35,20 @@
         <datalist id="respondentList"></datalist>
 
         <button class="submit" id="startButton" onclick="startSurvey()">
-            Začít
-        </button>
-
-        <button type="button" class="secondary" id="reviewButton" onclick="openReview()">
-            📋 Zobrazit / upravit odpovědi
+            Hodnotit dárky
         </button>
 
         <p id="loginMessage" class="message"></p>
+
+        <div class="divider"></div>
+
+        <button type="button" class="secondary" id="overviewButton" onclick="showOverview()">
+            📊 Přehled dárků
+        </button>
+
+        <button type="button" class="secondary" id="addGiftScreenButton" onclick="showAddGiftScreen()">
+            ➕ Přidat dárek
+        </button>
     </div>
 
     <div id="surveyScreen" class="card" style="display:none;">
@@ -89,10 +95,39 @@
         </div>
     </div>
 
+    <div id="overviewScreen" class="card" style="display:none;">
+        <h2>Přehled dárků</h2>
+        <p class="hint">Pořadí podle průměrného hodnocení všech hlasujících.</p>
+
+        <div id="overviewList"></div>
+
+        <label for="personSelect">Odpovědi konkrétního člena rodiny</label>
+        <select id="personSelect" onchange="onPersonSelected()">
+            <option value="">— Vyber jméno —</option>
+        </select>
+    </div>
+
     <div id="reviewScreen" class="card" style="display:none;">
+        <button type="button" class="linkBack" onclick="showOverview()">
+            ‹ Zpět na přehled dárků
+        </button>
+
         <h2 id="reviewTitle">Odpovědi</h2>
 
         <div id="reviewList"></div>
+    </div>
+
+    <div id="addGiftScreen" class="card" style="display:none;">
+        <h2>Přidat dárek</h2>
+        <p class="hint">Nový nápad se přidá do seznamu, příští hlasující ho uvidí.</p>
+
+        <input type="text" id="newGiftInput" placeholder="Název dárku" autocomplete="off">
+
+        <button class="submit" id="addGiftButton" onclick="submitNewGift()">
+            Přidat do seznamu
+        </button>
+
+        <p id="addGiftMessage" class="message"></p>
     </div>
 
     <div id="finishScreen" class="card" style="display:none;">
