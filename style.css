@@ -50,6 +50,35 @@ body{
     color:var(--text);
 }
 
+.langSwitch{
+    display:flex;
+    gap:4px;
+}
+
+.langBtn{
+    width:auto;
+    background:none;
+    border:1px solid transparent;
+    color:var(--text-muted);
+    font-size:11px;
+    font-weight:700;
+    letter-spacing:0.02em;
+    padding:4px 8px;
+    margin:0;
+    border-radius:999px;
+    cursor:pointer;
+}
+
+.langBtn:hover{
+    color:var(--text);
+}
+
+.langBtn.active{
+    background:var(--accent-soft);
+    color:var(--accent);
+    border-color:var(--accent-soft);
+}
+
 .container{
     max-width:520px;
     margin:auto;
