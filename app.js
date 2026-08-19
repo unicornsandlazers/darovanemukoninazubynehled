@@ -184,19 +184,65 @@ function resetVoteControls() {
     document.getElementById("commentInput").value = "";
 }
 
+const VOTE_CONFIRM_DELAY_MS = 900;
+let voteInFlight = false;
+
 function submitVote() {
+
+    // Pojistka proti dvojímu odeslání (např. Enter v komentáři hned po
+    // posunu posuvníku) — bez ní by druhé volání během čekání na potvrzení
+    // omylem přeskočilo další dárek navíc.
+    if (voteInFlight) return;
+    voteInFlight = true;
 
     const gift = editingIndex !== null ? reviewData[editingIndex].gift : queue[0];
     const score = Number(document.getElementById("scoreSlider").value);
     const comment = document.getElementById("commentInput").value.trim();
 
-    // Uložení běží na pozadí — appka rovnou pokračuje dál, ať se nečeká
-    // zbytečně po každém kliknutí/posunu posuvníku.
+    // Uložení běží na pozadí hned, appka ale chvíli počká, než přejde dál —
+    // aby bylo vidět, že se hodnocení opravdu zaznamenalo.
     saveResponse({ name: currentUser, gift: gift, score: score, comment: comment });
+
+    showVoteConfirm(score);
+
+    setTimeout(() => {
+        voteInFlight = false;
+        hideVoteConfirm();
+        finishVote(gift, score, comment);
+    }, VOTE_CONFIRM_DELAY_MS);
+}
+
+function showVoteConfirm(score) {
+    const confirmEl = document.getElementById("voteConfirm");
+    const sign = score > 0 ? "+" : "";
+
+    confirmEl.textContent = `✓ Zaznamenáno: ${sign}${score}`;
+    confirmEl.style.display = "block";
+
+    // Zamčeno na dobu potvrzení, ať mezitím nejde odejít (Zpět/Zrušit
+    // úpravu) a nekolidovat s odloženým finishVote().
+    document.getElementById("scoreSlider").disabled = true;
+    document.getElementById("commentInput").disabled = true;
+    document.getElementById("backButton").disabled = true;
+    document.getElementById("cancelEditButton").disabled = true;
+    document.getElementById("voteHint").style.display = "none";
+}
+
+function hideVoteConfirm() {
+    document.getElementById("voteConfirm").style.display = "none";
+    document.getElementById("scoreSlider").disabled = false;
+    document.getElementById("commentInput").disabled = false;
+    document.getElementById("backButton").disabled = false;
+    document.getElementById("cancelEditButton").disabled = false;
+    document.getElementById("voteHint").style.display = "block";
+}
+
+function finishVote(gift, score, comment) {
 
     if (editingIndex !== null) {
         reviewData[editingIndex] = { gift: gift, score: score, comment: comment };
         editingIndex = null;
+        sortReviewData();
         document.getElementById("cancelEditButton").style.display = "none";
         document.getElementById("surveyScreen").style.display = "none";
         renderReview();
@@ -250,6 +296,7 @@ async function openReview() {
     try {
         const response = await fetch(`${API}?action=myresponses&name=${encodeURIComponent(currentUser)}`);
         reviewData = await response.json();
+        sortReviewData();
 
         document.getElementById("loginScreen").style.display = "none";
         renderReview();
@@ -260,6 +307,11 @@ async function openReview() {
     } finally {
         reviewButton.disabled = false;
     }
+}
+
+function sortReviewData() {
+    // Od nejvyššího hodnocení po nejnižší.
+    reviewData.sort((a, b) => b.score - a.score);
 }
 
 function renderReview() {
