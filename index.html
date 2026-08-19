@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rodinný průzkum dárků</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -12,19 +13,22 @@
     <div id="loginScreen">
         <h1>Rodinný průzkum dárků</h1>
 
-        <label>Jak se jmenuješ?</label>
+        <label for="nameInput">Jak se jmenuješ?</label>
 
         <input
             type="text"
             id="nameInput"
             list="respondentList"
-            placeholder="Začni psát jméno">
+            placeholder="Začni psát jméno"
+            autocomplete="off">
 
         <datalist id="respondentList"></datalist>
 
-        <button onclick="startSurvey()">
+        <button id="startButton" onclick="startSurvey()">
             Začít
         </button>
+
+        <p id="loginMessage" class="message"></p>
     </div>
 
     <div id="surveyScreen" style="display:none;">
@@ -46,25 +50,26 @@
     </div>
 
     <div id="finishScreen" style="display:none;">
-        <h2>Hotovo 🎉</h2>
+        <h2 id="finishTitle">Hotovo 🎉</h2>
 
-        <p>Máš ještě další tip?</p>
+        <p>Napadá tě ještě další dárek, který jsme v seznamu neměli?</p>
 
-        <input id="extraGift" placeholder="Název dárku">
+        <input id="extraGift" placeholder="Název dárku" autocomplete="off">
 
         <select id="extraType">
-            <option>Oblíbené</option>
-            <option>Nevhodné</option>
+            <option value="Oblíbené">Oblíbený dárek</option>
+            <option value="Nevhodné">Nevhodný dárek</option>
         </select>
 
-        <button onclick="saveExtraGift()">
+        <button id="addExtraButton" onclick="saveExtraGift()">
             Přidat
         </button>
+
+        <p id="extraMessage" class="message"></p>
     </div>
 
 </div>
 
-</script>
-
+<script src="app.js"></script>
 </body>
 </html>
