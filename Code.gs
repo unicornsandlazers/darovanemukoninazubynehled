@@ -8,6 +8,9 @@
  *                  D = kategorie (odvozená ze skóre), E = skóre (-10..10),
  *                  F = komentář
  *
+ * doGet akce: respondents, gifts, uservotes, myresponses, giftstats
+ * doPost typy: start, addgift, (bez type = uložení hlasu)
+ *
  * Po každé úpravě tohoto souboru je potřeba v Apps Scriptu udělat
  * Deploy > Manage deployments > (tužka) Edit > New version > Deploy,
  * jinak se změny na živé URL neprojeví. Web app musí být nasazený
@@ -36,6 +39,10 @@ function doGet(e) {
       return json(getUserResponses_(name));
     }
 
+    if (action === "giftstats") {
+      return json(getGiftStats_());
+    }
+
     return json({ error: "Unknown action" });
   } catch (err) {
     return json({ error: String(err) });
@@ -58,6 +65,14 @@ function doPost(e) {
       // Rovnou vrátíme i seznam dárků, které tenhle člověk už ohodnotil,
       // ať appka nemusí posílat samostatný požadavek navíc.
       return json({ success: true, alreadyVoted: getUserVotes_(name.toLowerCase()) });
+    }
+
+    if (data.type === "addgift") {
+      if (!data.gift || !data.gift.trim()) {
+        return json({ error: "Chybí název dárku." });
+      }
+      addGiftIfMissing_(data.gift.trim());
+      return json({ success: true });
     }
 
     if (!data.name || !data.gift || typeof data.score !== "number" || isNaN(data.score)) {
@@ -184,6 +199,66 @@ function addRespondentIfMissing_(name) {
   if (!exists) {
     sheet.appendRow([name]);
   }
+}
+
+function addGiftIfMissing_(gift) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Gifts");
+  if (!sheet) return;
+
+  const existing = getColumnValues_("Gifts", 1);
+  const giftLower = gift.toLowerCase();
+  const exists = existing.some(g => g.toLowerCase() === giftLower);
+
+  if (!exists) {
+    sheet.appendRow([gift]);
+  }
+}
+
+// Průměrné skóre a počet hlasů pro každý dárek ze seznamu Gifts, seřazené
+// od nejoblíbenějšího po nejméně oblíbený. Dárky bez hlasů (avgScore null)
+// jsou vždy až za těmi s hlasy, seřazené abecedně.
+function getGiftStats_() {
+  const gifts = getColumnValues_("Gifts", 1);
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Responses");
+
+  const sums = {};
+  const counts = {};
+
+  if (sheet) {
+    const lastRow = sheet.getLastRow();
+    if (lastRow >= 2) {
+      // C = dárek, D = kategorie, E = skóre
+      const values = sheet.getRange(2, 3, lastRow - 1, 3).getValues();
+
+      values.forEach(row => {
+        const gift = String(row[0]).trim();
+        const score = Number(row[2]);
+
+        if (!gift || isNaN(score)) return;
+
+        sums[gift] = (sums[gift] || 0) + score;
+        counts[gift] = (counts[gift] || 0) + 1;
+      });
+    }
+  }
+
+  const withVotes = [];
+  const withoutVotes = [];
+
+  gifts.forEach(gift => {
+    const count = counts[gift] || 0;
+
+    if (count > 0) {
+      withVotes.push({ gift: gift, avgScore: sums[gift] / count, voteCount: count });
+    } else {
+      withoutVotes.push({ gift: gift, avgScore: null, voteCount: 0 });
+    }
+  });
+
+  withVotes.sort((a, b) => b.avgScore - a.avgScore);
+  withoutVotes.sort((a, b) => a.gift.localeCompare(b.gift, "cs"));
+
+  return withVotes.concat(withoutVotes);
 }
 
 function json(data) {

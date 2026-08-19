@@ -33,6 +33,14 @@ async function loadRespondents() {
             option.value = name;
             list.appendChild(option);
         });
+
+        const select = document.getElementById("personSelect");
+        respondents.forEach(name => {
+            const option = document.createElement("option");
+            option.value = name;
+            option.textContent = name;
+            select.appendChild(option);
+        });
     } catch (err) {
         console.error("Nepodařilo se načíst seznam respondentů:", err);
     }
@@ -271,43 +279,129 @@ function cancelEdit() {
     document.getElementById("reviewScreen").style.display = "block";
 }
 
-async function openReview() {
+// Přehled dárků seřazený podle popularity napříč všemi hlasujícími —
+// nevyžaduje zadání jména, jde na něj rovnou z úvodní obrazovky.
+async function showOverview() {
 
-    const raw = document.getElementById("nameInput").value.trim();
-    const message = document.getElementById("loginMessage");
-    message.textContent = "";
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("reviewScreen").style.display = "none";
+    document.getElementById("overviewScreen").style.display = "block";
 
-    if (!raw) {
-        message.textContent = "Vyplň prosím jméno.";
-        return;
-    }
-
-    const existing = findExistingName(raw);
-
-    if (!existing) {
-        message.textContent = `Jméno "${raw}" jsme v seznamu nenašli — nejdřív vyplň dotazník tlačítkem Začít.`;
-        return;
-    }
-
-    currentUser = existing;
-
-    const reviewButton = document.getElementById("reviewButton");
-    reviewButton.disabled = true;
+    const container = document.getElementById("overviewList");
+    container.innerHTML = "<p class=\"hint\">Načítám…</p>";
 
     try {
-        const response = await fetch(`${API}?action=myresponses&name=${encodeURIComponent(currentUser)}`);
-        reviewData = await response.json();
-        sortReviewData();
-
-        document.getElementById("reviewTitle").textContent = `Odpovědi: ${currentUser}`;
-        document.getElementById("loginScreen").style.display = "none";
-        renderReview();
-        document.getElementById("reviewScreen").style.display = "block";
+        const response = await fetch(`${API}?action=giftstats`);
+        const stats = await response.json();
+        renderOverview(stats);
     } catch (err) {
         console.error(err);
-        message.textContent = "Nepodařilo se načíst odpovědi. Zkus to prosím znovu.";
+        container.innerHTML = "<p class=\"message\">Nepodařilo se načíst přehled. Zkus to prosím znovu.</p>";
+    }
+}
+
+function voteCountLabel(count) {
+    if (count === 0) return "zatím bez hlasů";
+    if (count === 1) return "1 hlas";
+    if (count <= 4) return `${count} hlasy`;
+    return `${count} hlasů`;
+}
+
+function renderOverview(stats) {
+
+    const container = document.getElementById("overviewList");
+    container.innerHTML = "";
+
+    if (stats.length === 0) {
+        container.innerHTML = "<p>Zatím tu nejsou žádné dárky.</p>";
+        return;
+    }
+
+    stats.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "reviewItem";
+
+        const hasVotes = item.voteCount > 0;
+        const scoreColor = !hasVotes ? "#9a9690" : item.avgScore > 0 ? "#4f9d70" : item.avgScore < 0 ? "#d97a63" : "#9a9690";
+        const scoreText = hasVotes ? (item.avgScore > 0 ? "+" : "") + item.avgScore.toFixed(1) : "—";
+
+        row.innerHTML =
+            `<div class="reviewGift">${escapeHtml(item.gift)}</div>` +
+            `<div class="reviewScore" style="color:${scoreColor}">${scoreText}</div>` +
+            `<div class="hint" style="margin-top:2px;">${voteCountLabel(item.voteCount)}</div>`;
+
+        container.appendChild(row);
+    });
+}
+
+// Zobrazí odpovědi konkrétního člověka (vybraného v přehledu) s možností
+// úpravy — nemusí to být appka mého vlastního hlasování, klidně někdo jiný.
+async function onPersonSelected() {
+
+    const select = document.getElementById("personSelect");
+    const name = select.value;
+    if (!name) return;
+
+    select.value = "";
+    currentUser = name;
+
+    const container = document.getElementById("reviewList");
+    document.getElementById("reviewTitle").textContent = `Odpovědi: ${name}`;
+    container.innerHTML = "<p class=\"hint\">Načítám…</p>";
+
+    document.getElementById("overviewScreen").style.display = "none";
+    document.getElementById("reviewScreen").style.display = "block";
+
+    try {
+        const response = await fetch(`${API}?action=myresponses&name=${encodeURIComponent(name)}`);
+        reviewData = await response.json();
+        sortReviewData();
+        renderReview();
+    } catch (err) {
+        console.error(err);
+        container.innerHTML = "<p class=\"message\">Nepodařilo se načíst odpovědi. Zkus to prosím znovu.</p>";
+    }
+}
+
+function showAddGiftScreen() {
+    document.getElementById("loginScreen").style.display = "none";
+    document.getElementById("addGiftScreen").style.display = "block";
+    document.getElementById("addGiftMessage").textContent = "";
+}
+
+async function submitNewGift() {
+
+    const input = document.getElementById("newGiftInput");
+    const gift = input.value.trim();
+    const message = document.getElementById("addGiftMessage");
+    const button = document.getElementById("addGiftButton");
+
+    if (!gift) {
+        message.textContent = "Napiš prosím název dárku.";
+        return;
+    }
+
+    button.disabled = true;
+    message.textContent = "";
+
+    try {
+        const response = await fetch(API, {
+            method: "POST",
+            body: JSON.stringify({ type: "addgift", gift: gift })
+        }).then(r => r.json());
+
+        if (response.error) {
+            message.textContent = response.error;
+        } else {
+            message.textContent = `Přidáno: "${gift}" ✅ Uvidí ho příští hlasující.`;
+            input.value = "";
+            allGifts.push(gift);
+        }
+    } catch (err) {
+        console.error(err);
+        message.textContent = "Nepodařilo se přidat, zkus to prosím znovu.";
     } finally {
-        reviewButton.disabled = false;
+        button.disabled = false;
     }
 }
 
@@ -322,7 +416,7 @@ function renderReview() {
     container.innerHTML = "";
 
     if (reviewData.length === 0) {
-        container.innerHTML = "<p>Zatím nemáš žádné vyplněné odpovědi.</p>";
+        container.innerHTML = "<p>Zatím tu nejsou žádné vyplněné odpovědi.</p>";
         return;
     }
 
