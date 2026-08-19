@@ -23,6 +23,7 @@ async function loadRespondents() {
     try {
         const response = await fetch(`${API}?action=respondents`);
         respondents = await response.json();
+        respondents.sort((a, b) => a.localeCompare(b, "cs"));
 
         const list = document.getElementById("respondentList");
         list.innerHTML = "";
@@ -174,7 +175,7 @@ function updateSliderValue(slider, labelId) {
     const label = document.getElementById(labelId);
 
     label.textContent = value;
-    label.style.color = value > 0 ? "#4caf50" : value < 0 ? "#d32f2f" : "#616161";
+    label.style.color = value > 0 ? "#4f9d70" : value < 0 ? "#d97a63" : "#9a9690";
 }
 
 function resetVoteControls() {
@@ -298,12 +299,13 @@ async function openReview() {
         reviewData = await response.json();
         sortReviewData();
 
+        document.getElementById("reviewTitle").textContent = `Odpovědi: ${currentUser}`;
         document.getElementById("loginScreen").style.display = "none";
         renderReview();
         document.getElementById("reviewScreen").style.display = "block";
     } catch (err) {
         console.error(err);
-        message.textContent = "Nepodařilo se načíst tvoje odpovědi. Zkus to prosím znovu.";
+        message.textContent = "Nepodařilo se načíst odpovědi. Zkus to prosím znovu.";
     } finally {
         reviewButton.disabled = false;
     }
@@ -328,7 +330,7 @@ function renderReview() {
         const row = document.createElement("div");
         row.className = "reviewItem";
 
-        const scoreColor = item.score > 0 ? "#4caf50" : item.score < 0 ? "#d32f2f" : "#616161";
+        const scoreColor = item.score > 0 ? "#4f9d70" : item.score < 0 ? "#d97a63" : "#9a9690";
 
         row.innerHTML =
             `<div class="reviewGift">${escapeHtml(item.gift)}</div>` +
