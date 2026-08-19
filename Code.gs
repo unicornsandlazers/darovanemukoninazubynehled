@@ -8,7 +8,17 @@
  *                  D = kategorie (odvozená ze skóre), E = skóre (-10..10),
  *                  F = komentář
  *
- * doGet akce: respondents, gifts, uservotes, myresponses, giftstats
+ * Vícejazyčnost: jména se nepřekládají. Název dárku se v listech ukládá
+ * a používá jako klíč (pro hlasování, "už odhlasováno" apod.) vždy
+ * v původním jazyce, v jakém ho kdo napsal — to je "gift". Pro zobrazení
+ * uživateli se navíc počítá "giftDisplay", přeložený za běhu přes
+ * LanguageApp do jazyka podle parametru "lang" (cs/sk/fr, výchozí cs),
+ * s cachováním přes CacheService (6 hodin), ať appka zbytečně
+ * nevytěžuje kvótu překladače a je rychlá.
+ *
+ * doGet akce: respondents, gifts, uservotes, myresponses, giftstats,
+ *             highlights (všechny kromě uservotes/respondents přijímají
+ *             ?lang=cs|sk|fr)
  * doPost typy: start, addgift, (bez type = uložení hlasu)
  *
  * Po každé úpravě tohoto souboru je potřeba v Apps Scriptu udělat
@@ -17,8 +27,11 @@
  * s "Execute as: Me" a "Who has access: Anyone".
  */
 
+const SUPPORTED_LANGS = ["cs", "sk", "fr"];
+
 function doGet(e) {
   const action = e.parameter.action;
+  const lang = normalizeLang_(e.parameter.lang);
 
   try {
     if (action === "respondents") {
@@ -26,7 +39,7 @@ function doGet(e) {
     }
 
     if (action === "gifts") {
-      return json(getColumnValues_("Gifts", 1));
+      return json(getGiftsWithDisplay_(lang));
     }
 
     if (action === "uservotes") {
@@ -36,15 +49,15 @@ function doGet(e) {
 
     if (action === "myresponses") {
       const name = (e.parameter.name || "").trim().toLowerCase();
-      return json(getUserResponses_(name));
+      return json(getUserResponses_(name, lang));
     }
 
     if (action === "giftstats") {
-      return json(getGiftStats_());
+      return json(getGiftStats_(lang));
     }
 
     if (action === "highlights") {
-      return json(getHighlights_());
+      return json(getHighlights_(lang));
     }
 
     return json({ error: "Unknown action" });
@@ -95,7 +108,8 @@ function doPost(e) {
 
     // Pokud už pro tuhle dvojici jméno+dárek řádek existuje (např. člověk
     // se vrátil tlačítkem "Zpět" a opravil hodnocení), přepíšeme ho místo
-    // přidání duplicitního řádku.
+    // přidání duplicitního řádku. "data.gift" je vždy kanonický (nepřeložený)
+    // název, appka nikdy neposílá přeloženou verzi zpátky.
     const existingRow = findResponseRow_(sheet, name.toLowerCase(), data.gift);
 
     if (existingRow > 0) {
@@ -110,6 +124,10 @@ function doPost(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+function normalizeLang_(lang) {
+  return SUPPORTED_LANGS.indexOf(lang) >= 0 ? lang : "cs";
 }
 
 function clampScore_(score) {
@@ -171,7 +189,7 @@ function getUserVotes_(nameLower) {
     .map(row => String(row[1]).trim());
 }
 
-function getUserResponses_(nameLower) {
+function getUserResponses_(nameLower, lang) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Responses");
   if (!sheet) return [];
 
@@ -183,11 +201,15 @@ function getUserResponses_(nameLower) {
 
   return values
     .filter(row => String(row[0]).trim().toLowerCase() === nameLower)
-    .map(row => ({
-      gift: String(row[1]).trim(),
-      score: Number(row[3]),
-      comment: String(row[4] || "").trim()
-    }));
+    .map(row => {
+      const gift = String(row[1]).trim();
+      return {
+        gift: gift,
+        giftDisplay: translateText_(gift, lang),
+        score: Number(row[3]),
+        comment: String(row[4] || "").trim()
+      };
+    });
 }
 
 function addRespondentIfMissing_(name) {
@@ -218,10 +240,18 @@ function addGiftIfMissing_(gift) {
   }
 }
 
+function getGiftsWithDisplay_(lang) {
+  return getColumnValues_("Gifts", 1).map(gift => ({
+    gift: gift,
+    giftDisplay: translateText_(gift, lang)
+  }));
+}
+
 // Průměrné skóre a počet hlasů pro každý dárek ze seznamu Gifts, seřazené
 // od nejoblíbenějšího po nejméně oblíbený. Dárky bez hlasů (avgScore null)
-// jsou vždy až za těmi s hlasy, seřazené abecedně.
-function getGiftStats_() {
+// jsou vždy až za těmi s hlasy, seřazené abecedně (podle kanonického
+// názvu — u přeložených verzí by řazení mezi jazyky nesedělo).
+function getGiftStats_(lang) {
   const gifts = getColumnValues_("Gifts", 1);
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Responses");
 
@@ -251,11 +281,17 @@ function getGiftStats_() {
 
   gifts.forEach(gift => {
     const count = counts[gift] || 0;
+    const item = {
+      gift: gift,
+      giftDisplay: translateText_(gift, lang),
+      avgScore: count > 0 ? sums[gift] / count : null,
+      voteCount: count
+    };
 
     if (count > 0) {
-      withVotes.push({ gift: gift, avgScore: sums[gift] / count, voteCount: count });
+      withVotes.push(item);
     } else {
-      withoutVotes.push({ gift: gift, avgScore: null, voteCount: 0 });
+      withoutVotes.push(item);
     }
   });
 
@@ -269,7 +305,7 @@ function getGiftStats_() {
 // dárků (nejvyšší rozptyl hodnocení = rodina se na nich nejvíc neshodla).
 // Kontroverzní počítáme jen z dárků aspoň se 2 hlasy, jinak rozptyl
 // nemá smysl.
-function getHighlights_() {
+function getHighlights_(lang) {
   const gifts = getColumnValues_("Gifts", 1);
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Responses");
 
@@ -303,6 +339,7 @@ function getHighlights_() {
 
       return {
         gift: gift,
+        giftDisplay: translateText_(gift, lang),
         avgScore: avg,
         voteCount: scores.length,
         min: Math.min.apply(null, scores),
@@ -338,6 +375,33 @@ function buildHistogram_(scores) {
     score: Number(k),
     count: counts[k]
   }));
+}
+
+// Přeloží text na požadovaný jazyk přes vestavěnou LanguageApp (Google
+// Translate, zdarma v rámci Apps Scriptu, bez API klíče). Zdrojový jazyk
+// necháváme na automatické detekci, ať to funguje bez ohledu na to, kdo
+// dárek původně napsal a v jakém jazyce. Výsledek se cachuje na 6 hodin
+// (maximum CacheService), ať se stejný text nepřekládá opakovaně a appka
+// zbytečně nevyčerpává kvótu překladače.
+function translateText_(text, lang) {
+  if (!text) return text;
+
+  const cache = CacheService.getScriptCache();
+  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, text + "|" + lang);
+  const cacheKey = "tr_" + Utilities.base64EncodeWebSafe(digest);
+
+  const cached = cache.get(cacheKey);
+  if (cached !== null) return cached;
+
+  let translated;
+  try {
+    translated = LanguageApp.translate(text, "", lang);
+  } catch (err) {
+    translated = text; // Když se překlad nepovede, ukážeme radši původní text než chybu.
+  }
+
+  cache.put(cacheKey, translated, 21600);
+  return translated;
 }
 
 function json(data) {

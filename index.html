@@ -12,47 +12,44 @@
 <body>
 
 <div class="topbar">
-    <button type="button" class="homeLink" onclick="location.reload()">
-        ← Domů
-    </button>
+    <button type="button" class="homeLink" data-i18n="home" onclick="location.reload()"></button>
+
+    <div class="langSwitch">
+        <button type="button" class="langBtn" data-lang="cs" onclick="setLang('cs')">CS</button>
+        <button type="button" class="langBtn" data-lang="sk" onclick="setLang('sk')">SK</button>
+        <button type="button" class="langBtn" data-lang="fr" onclick="setLang('fr')">FR</button>
+    </div>
+
     <div id="saveStatus" class="saveStatus"></div>
 </div>
 
 <div class="container">
 
     <div id="loginScreen" class="card">
-        <h1>Rodinný průzkum dárků</h1>
+        <h1 data-i18n="app_title"></h1>
 
-        <label for="nameInput">Jak se jmenuješ?</label>
+        <label for="nameInput" data-i18n="name_label"></label>
 
         <input
             type="text"
             id="nameInput"
             list="respondentList"
-            placeholder="Začni psát jméno"
+            data-i18n-placeholder="name_placeholder"
             autocomplete="off">
 
         <datalist id="respondentList"></datalist>
 
-        <button class="submit" id="startButton" onclick="startSurvey()">
-            Hodnotit dárky
-        </button>
+        <button class="submit" id="startButton" data-i18n="start_button" onclick="startSurvey()"></button>
 
         <p id="loginMessage" class="message"></p>
 
         <div class="divider"></div>
 
-        <button type="button" class="secondary" id="overviewButton" onclick="showOverview()">
-            📊 Přehled dárků
-        </button>
+        <button type="button" class="secondary" id="overviewButton" data-i18n="overview_button" onclick="showOverview()"></button>
 
-        <button type="button" class="secondary" id="highlightsButton" onclick="showHighlights()">
-            🏆 Zajímavosti
-        </button>
+        <button type="button" class="secondary" id="highlightsButton" data-i18n="highlights_button" onclick="showHighlights()"></button>
 
-        <button type="button" class="secondary" id="addGiftScreenButton" onclick="showAddGiftScreen()">
-            ➕ Přidat dárek
-        </button>
+        <button type="button" class="secondary" id="addGiftScreenButton" data-i18n="addgift_button" onclick="showAddGiftScreen()"></button>
     </div>
 
     <div id="surveyScreen" class="card" style="display:none;">
@@ -71,96 +68,86 @@
                 oninput="updateSliderValue(this, 'sliderValue')">
 
             <div class="sliderLabels">
-                <span>Nevhodné</span>
-                <span>Nemám názor</span>
-                <span>Ideální</span>
+                <span data-i18n="slider_bad"></span>
+                <span data-i18n="slider_neutral"></span>
+                <span data-i18n="slider_good"></span>
             </div>
 
             <div class="sliderValue" id="sliderValue">0</div>
         </div>
 
-        <p class="hint" id="voteHint">Posun posuvníku odešle hodnocení a posune tě na další dárek.</p>
+        <p class="hint" id="voteHint" data-i18n="vote_hint"></p>
 
         <div class="voteConfirm" id="voteConfirm" style="display:none;"></div>
 
         <textarea
             id="commentInput"
-            placeholder="Komentář (nepovinné) — Enter odešle, Shift+Enter nový řádek"
+            data-i18n-placeholder="comment_placeholder"
             rows="2"></textarea>
 
         <div class="buttonRow">
-            <button type="button" class="secondary" id="backButton" onclick="goBack()" style="display:none;">
-                ⬅ Zpět
-            </button>
+            <button type="button" class="secondary" id="backButton" data-i18n="back_button" onclick="goBack()" style="display:none;"></button>
 
-            <button type="button" class="secondary" id="cancelEditButton" onclick="cancelEdit()" style="display:none;">
-                Zrušit úpravu
-            </button>
+            <button type="button" class="secondary" id="cancelEditButton" data-i18n="cancel_edit_button" onclick="cancelEdit()" style="display:none;"></button>
         </div>
     </div>
 
     <div id="overviewScreen" class="card" style="display:none;">
-        <h2>Přehled dárků</h2>
+        <h2 data-i18n="overview_title"></h2>
 
-        <label for="personSelect">Odpovědi konkrétního člena rodiny</label>
+        <label for="personSelect" data-i18n="person_select_label"></label>
         <select id="personSelect" onchange="onPersonSelected()">
-            <option value="">— Vyber jméno —</option>
+            <option value="" data-i18n="person_select_default"></option>
         </select>
 
         <div class="divider"></div>
 
-        <p class="hint">Pořadí podle průměrného hodnocení všech hlasujících.</p>
+        <p class="hint" data-i18n="overview_hint"></p>
 
         <div id="overviewList"></div>
     </div>
 
     <div id="reviewScreen" class="card" style="display:none;">
-        <button type="button" class="linkBack" onclick="showOverview()">
-            ‹ Zpět na přehled dárků
-        </button>
+        <button type="button" class="linkBack" data-i18n="review_back_link" onclick="showOverview()"></button>
 
-        <h2 id="reviewTitle">Odpovědi</h2>
+        <h2 id="reviewTitle"></h2>
 
         <div id="reviewList"></div>
     </div>
 
     <div id="highlightsScreen" class="card" style="display:none;">
-        <h2>Zajímavosti</h2>
+        <h2 data-i18n="highlights_title"></h2>
 
-        <h3>🏆 Nejoblíbenější</h3>
+        <h3 data-i18n="top_favorite_heading"></h3>
         <div id="topFavoriteList"></div>
 
-        <h3>💔 Nejméně oblíbené</h3>
+        <h3 data-i18n="top_unpopular_heading"></h3>
         <div id="topUnpopularList"></div>
 
-        <h3>⚡ Nejkontroverznější</h3>
-        <p class="hint">Dárky, na kterých se rodina nejvíc neshodla.</p>
+        <h3 data-i18n="top_controversial_heading"></h3>
+        <p class="hint" data-i18n="controversial_hint"></p>
         <div id="topControversialList"></div>
     </div>
 
     <div id="addGiftScreen" class="card" style="display:none;">
-        <h2>Přidat dárek</h2>
-        <p class="hint">Nový nápad se přidá do seznamu, příští hlasující ho uvidí.</p>
+        <h2 data-i18n="addgift_title"></h2>
+        <p class="hint" data-i18n="addgift_hint"></p>
 
-        <input type="text" id="newGiftInput" placeholder="Název dárku" autocomplete="off">
+        <input type="text" id="newGiftInput" data-i18n-placeholder="gift_name_placeholder" autocomplete="off">
 
-        <button class="submit" id="addGiftButton" onclick="submitNewGift()">
-            Přidat do seznamu
-        </button>
+        <button class="submit" id="addGiftButton" data-i18n="addgift_submit" onclick="submitNewGift()"></button>
 
         <p id="addGiftMessage" class="message"></p>
     </div>
 
     <div id="finishScreen" class="card" style="display:none;">
-        <h2 id="finishTitle">Hotovo 🎉</h2>
+        <h2 id="finishTitle"></h2>
 
-        <button type="button" class="secondary" id="finishBackButton" onclick="goBack()" style="display:none;">
-            ⬅ Opravit poslední hodnocení
-        </button>
+        <button type="button" class="secondary" id="finishBackButton" data-i18n="finish_back_button" onclick="goBack()" style="display:none;"></button>
 
-        <p>Napadá tě ještě další dárek, který jsme v seznamu neměli?</p>
+        <p data-i18n="finish_prompt"></p>
 
-        <input id="extraGift" placeholder="Název dárku" autocomplete="off">
+        <input id="extraGift" data-i18n-placeholder="gift_name_placeholder" autocomplete="off">
 
         <div class="sliderWrap">
             <input
@@ -173,9 +160,9 @@
                 oninput="updateSliderValue(this, 'extraSliderValue')">
 
             <div class="sliderLabels">
-                <span>Nevhodné</span>
-                <span>Nemám názor</span>
-                <span>Ideální</span>
+                <span data-i18n="slider_bad"></span>
+                <span data-i18n="slider_neutral"></span>
+                <span data-i18n="slider_good"></span>
             </div>
 
             <div class="sliderValue" id="extraSliderValue">0</div>
@@ -183,12 +170,10 @@
 
         <textarea
             id="extraComment"
-            placeholder="Komentář (nepovinné) — Enter odešle, Shift+Enter nový řádek"
+            data-i18n-placeholder="comment_placeholder"
             rows="2"></textarea>
 
-        <button class="submit" id="addExtraButton" onclick="saveExtraGift()">
-            Přidat
-        </button>
+        <button class="submit" id="addExtraButton" data-i18n="extra_add_button" onclick="saveExtraGift()"></button>
 
         <p id="extraMessage" class="message"></p>
     </div>
