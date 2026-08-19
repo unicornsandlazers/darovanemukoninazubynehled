@@ -48,8 +48,11 @@ function doPost(e) {
       if (!data.name) {
         return json({ error: "Chybí jméno." });
       }
-      addRespondentIfMissing_(data.name.trim());
-      return json({ success: true });
+      const name = data.name.trim();
+      addRespondentIfMissing_(name);
+      // Rovnou vrátíme i seznam dárků, které tenhle člověk už ohodnotil,
+      // ať appka nemusí posílat samostatný požadavek navíc.
+      return json({ success: true, alreadyVoted: getUserVotes_(name.toLowerCase()) });
     }
 
     if (!data.name || !data.gift || typeof data.score !== "number" || isNaN(data.score)) {

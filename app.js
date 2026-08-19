@@ -5,6 +5,15 @@ let allGifts = [];
 let queue = [];
 let currentUser = "";
 let respondents = [];
+let pendingCount = 0;
+let failedSaves = [];
+
+// Dárky se stahují na pozadí hned při otevření appky (souběžně s tím, jak
+// si člověk vybírá jméno), aby po kliknutí na "Začít" nebylo třeba čekat.
+const giftsReady = fetch(`${API}?action=gifts`)
+    .then(response => response.json())
+    .then(data => { allGifts = data; })
+    .catch(err => console.error("Nepodařilo se načíst seznam dárků:", err));
 
 async function loadRespondents() {
 
@@ -24,6 +33,64 @@ async function loadRespondents() {
         console.error("Nepodařilo se načíst seznam respondentů:", err);
     }
 }
+
+// Odešle odpověď na pozadí, aniž by appka musela čekat na výsledek.
+// Při chybě (např. výpadek připojení) se požadavek uloží do fronty
+// k opětovnému odeslání a nahoře se zobrazí upozornění.
+function saveResponse(payload) {
+    pendingCount++;
+    updateSaveStatus();
+
+    return fetch(API, {
+        method: "POST",
+        body: JSON.stringify(payload)
+    })
+        .then(() => {
+            pendingCount--;
+            updateSaveStatus();
+        })
+        .catch(err => {
+            console.error("Uložení odpovědi selhalo:", err);
+            pendingCount--;
+            failedSaves.push(payload);
+            updateSaveStatus();
+        });
+}
+
+function updateSaveStatus() {
+    const status = document.getElementById("saveStatus");
+    if (!status) return;
+
+    if (failedSaves.length > 0) {
+        status.innerHTML =
+            `⚠️ ${failedSaves.length} odpověď(i) se nepodařilo uložit. ` +
+            `<button type="button" onclick="retryFailedSaves()">Zkusit znovu</button>`;
+        status.classList.add("saveError");
+    } else if (pendingCount > 0) {
+        status.textContent = "Ukládám…";
+        status.classList.remove("saveError");
+    } else {
+        status.textContent = "";
+        status.classList.remove("saveError");
+    }
+}
+
+async function retryFailedSaves() {
+    const toRetry = failedSaves;
+    failedSaves = [];
+    updateSaveStatus();
+
+    for (const payload of toRetry) {
+        await saveResponse(payload);
+    }
+}
+
+window.addEventListener("beforeunload", (e) => {
+    if (failedSaves.length > 0 || pendingCount > 0) {
+        e.preventDefault();
+        e.returnValue = "";
+    }
+});
 
 function findExistingName(input) {
     const lower = input.trim().toLowerCase();
@@ -61,12 +128,18 @@ async function startSurvey() {
     startButton.textContent = "Načítám…";
 
     try {
-        await fetch(API, {
-            method: "POST",
-            body: JSON.stringify({ type: "start", name: currentUser })
-        });
+        // Požadavek na start a dárky (pokud ještě nedoběhly z přednačtení)
+        // běží souběžně, ne za sebou.
+        const [startResult] = await Promise.all([
+            fetch(API, {
+                method: "POST",
+                body: JSON.stringify({ type: "start", name: currentUser })
+            }).then(r => r.json()),
+            giftsReady
+        ]);
 
-        await prepareGiftQueue();
+        const alreadyVoted = new Set(startResult.alreadyVoted || []);
+        queue = allGifts.filter(gift => !alreadyVoted.has(gift));
 
         document.getElementById("loginScreen").style.display = "none";
 
@@ -83,19 +156,6 @@ async function startSurvey() {
         startButton.disabled = false;
         startButton.textContent = "Začít";
     }
-}
-
-async function prepareGiftQueue() {
-
-    const [giftsResponse, votesResponse] = await Promise.all([
-        fetch(`${API}?action=gifts`),
-        fetch(`${API}?action=uservotes&name=${encodeURIComponent(currentUser)}`)
-    ]);
-
-    allGifts = await giftsResponse.json();
-    const alreadyVoted = new Set(await votesResponse.json());
-
-    queue = allGifts.filter(gift => !alreadyVoted.has(gift));
 }
 
 function showGift() {
@@ -121,40 +181,24 @@ function resetVoteControls() {
     document.getElementById("commentInput").value = "";
 }
 
-async function submitVote() {
+function submitVote() {
 
     const gift = queue[0];
     const score = Number(document.getElementById("scoreSlider").value);
     const comment = document.getElementById("commentInput").value.trim();
-    const button = document.getElementById("submitVoteButton");
 
-    button.disabled = true;
+    // Uložení běží na pozadí — appka rovnou pokračuje na další dárek,
+    // ať se nečeká zbytečně po každém kliknutí.
+    saveResponse({ name: currentUser, gift: gift, score: score, comment: comment });
 
-    try {
-        await fetch(API, {
-            method: "POST",
-            body: JSON.stringify({
-                name: currentUser,
-                gift: gift,
-                score: score,
-                comment: comment
-            })
-        });
+    queue.shift();
 
-        queue.shift();
-
-        if (queue.length === 0) {
-            document.getElementById("surveyScreen").style.display = "none";
-            showFinishScreen("Hotovo 🎉");
-        } else {
-            resetVoteControls();
-            showGift();
-        }
-    } catch (err) {
-        console.error(err);
-        alert("Nepodařilo se uložit odpověď, zkus to prosím znovu.");
-    } finally {
-        button.disabled = false;
+    if (queue.length === 0) {
+        document.getElementById("surveyScreen").style.display = "none";
+        showFinishScreen("Hotovo 🎉");
+    } else {
+        resetVoteControls();
+        showGift();
     }
 }
 
@@ -163,7 +207,7 @@ function showFinishScreen(title) {
     document.getElementById("finishScreen").style.display = "block";
 }
 
-async function saveExtraGift() {
+function saveExtraGift() {
 
     const giftInput = document.getElementById("extraGift");
     const gift = giftInput.value.trim();
@@ -172,37 +216,19 @@ async function saveExtraGift() {
     const commentInput = document.getElementById("extraComment");
     const comment = commentInput.value.trim();
     const message = document.getElementById("extraMessage");
-    const button = document.getElementById("addExtraButton");
 
     if (!gift) {
         message.textContent = "Napiš prosím název dárku.";
         return;
     }
 
-    button.disabled = true;
+    saveResponse({ name: currentUser, gift: gift, score: score, comment: comment });
 
-    try {
-        await fetch(API, {
-            method: "POST",
-            body: JSON.stringify({
-                name: currentUser,
-                gift: gift,
-                score: score,
-                comment: comment
-            })
-        });
-
-        message.textContent = `Přidáno: "${gift}" ✅`;
-        giftInput.value = "";
-        scoreSlider.value = 0;
-        updateSliderValue(scoreSlider, "extraSliderValue");
-        commentInput.value = "";
-    } catch (err) {
-        console.error(err);
-        message.textContent = "Nepodařilo se uložit, zkus to prosím znovu.";
-    } finally {
-        button.disabled = false;
-    }
+    message.textContent = `Přidáno: "${gift}" ✅`;
+    giftInput.value = "";
+    scoreSlider.value = 0;
+    updateSliderValue(scoreSlider, "extraSliderValue");
+    commentInput.value = "";
 }
 
 loadRespondents();
