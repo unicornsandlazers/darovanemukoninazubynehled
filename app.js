@@ -432,12 +432,16 @@ function renderDistribution(histogram) {
     const maxSize = 22;
 
     const dots = histogram.map(h => {
-        const leftPct = ((h.score + 10) / 20) * 100;
+        const fraction = (h.score + 10) / 20;
         const size = minSize + (h.count / maxCount) * (maxSize - minSize);
+        const radius = size / 2;
+        // Odsazeno o poloměr tečky, ať se u krajních hodnot (-10/+10)
+        // vejde celá dovnitř pásu místo přesahu za okraj.
+        const left = `calc(${radius}px + ${fraction} * (100% - ${size}px))`;
         const sign = h.score > 0 ? "+" : "";
         const title = `${sign}${h.score}: ${voteCountLabel(h.count)}`;
 
-        return `<div class="distDot" style="left:${leftPct}%; width:${size}px; height:${size}px;" title="${title}"></div>`;
+        return `<div class="distDot" style="left:${left}; width:${size}px; height:${size}px;" title="${title}"></div>`;
     }).join("");
 
     return `<div class="distStrip">${dots}</div>`;
