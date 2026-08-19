@@ -8,6 +8,8 @@ let respondents = [];
 let pendingCount = 0;
 let failedSaves = [];
 let history = [];
+let reviewData = [];
+let editingIndex = null;
 
 // Dárky se stahují na pozadí hned při otevření appky (souběžně s tím, jak
 // si člověk vybírá jméno), aby po kliknutí na "Začít" nebylo třeba čekat.
@@ -184,13 +186,23 @@ function resetVoteControls() {
 
 function submitVote() {
 
-    const gift = queue[0];
+    const gift = editingIndex !== null ? reviewData[editingIndex].gift : queue[0];
     const score = Number(document.getElementById("scoreSlider").value);
     const comment = document.getElementById("commentInput").value.trim();
 
-    // Uložení běží na pozadí — appka rovnou pokračuje na další dárek,
-    // ať se nečeká zbytečně po každém kliknutí.
+    // Uložení běží na pozadí — appka rovnou pokračuje dál, ať se nečeká
+    // zbytečně po každém kliknutí/posunu posuvníku.
     saveResponse({ name: currentUser, gift: gift, score: score, comment: comment });
+
+    if (editingIndex !== null) {
+        reviewData[editingIndex] = { gift: gift, score: score, comment: comment };
+        editingIndex = null;
+        document.getElementById("cancelEditButton").style.display = "none";
+        document.getElementById("surveyScreen").style.display = "none";
+        renderReview();
+        document.getElementById("reviewScreen").style.display = "block";
+        return;
+    }
 
     history.push({ gift: gift, score: score, comment: comment });
     queue.shift();
@@ -203,6 +215,103 @@ function submitVote() {
         resetVoteControls();
         showGift();
     }
+}
+
+function cancelEdit() {
+    editingIndex = null;
+    document.getElementById("cancelEditButton").style.display = "none";
+    document.getElementById("surveyScreen").style.display = "none";
+    document.getElementById("reviewScreen").style.display = "block";
+}
+
+async function openReview() {
+
+    const raw = document.getElementById("nameInput").value.trim();
+    const message = document.getElementById("loginMessage");
+    message.textContent = "";
+
+    if (!raw) {
+        message.textContent = "Vyplň prosím jméno.";
+        return;
+    }
+
+    const existing = findExistingName(raw);
+
+    if (!existing) {
+        message.textContent = `Jméno "${raw}" jsme v seznamu nenašli — nejdřív vyplň dotazník tlačítkem Začít.`;
+        return;
+    }
+
+    currentUser = existing;
+
+    const reviewButton = document.getElementById("reviewButton");
+    reviewButton.disabled = true;
+
+    try {
+        const response = await fetch(`${API}?action=myresponses&name=${encodeURIComponent(currentUser)}`);
+        reviewData = await response.json();
+
+        document.getElementById("loginScreen").style.display = "none";
+        renderReview();
+        document.getElementById("reviewScreen").style.display = "block";
+    } catch (err) {
+        console.error(err);
+        message.textContent = "Nepodařilo se načíst tvoje odpovědi. Zkus to prosím znovu.";
+    } finally {
+        reviewButton.disabled = false;
+    }
+}
+
+function renderReview() {
+
+    const container = document.getElementById("reviewList");
+    container.innerHTML = "";
+
+    if (reviewData.length === 0) {
+        container.innerHTML = "<p>Zatím nemáš žádné vyplněné odpovědi.</p>";
+        return;
+    }
+
+    reviewData.forEach((item, index) => {
+        const row = document.createElement("div");
+        row.className = "reviewItem";
+
+        const scoreColor = item.score > 0 ? "#4caf50" : item.score < 0 ? "#d32f2f" : "#616161";
+
+        row.innerHTML =
+            `<div class="reviewGift">${escapeHtml(item.gift)}</div>` +
+            `<div class="reviewScore" style="color:${scoreColor}">${item.score}</div>` +
+            (item.comment ? `<div class="reviewComment">${escapeHtml(item.comment)}</div>` : "") +
+            `<button type="button" class="secondary" onclick="editReviewItem(${index})">✏️ Upravit</button>`;
+
+        container.appendChild(row);
+    });
+}
+
+function editReviewItem(index) {
+
+    const item = reviewData[index];
+    editingIndex = index;
+
+    document.getElementById("reviewScreen").style.display = "none";
+    document.getElementById("surveyScreen").style.display = "block";
+
+    document.getElementById("giftName").textContent = item.gift;
+    document.getElementById("progress").textContent = "Úprava odpovědi";
+
+    const slider = document.getElementById("scoreSlider");
+    slider.value = item.score;
+    updateSliderValue(slider, "sliderValue");
+    document.getElementById("commentInput").value = item.comment;
+
+    document.getElementById("backButton").style.display = "none";
+    document.getElementById("cancelEditButton").style.display = "block";
+}
+
+function escapeHtml(str) {
+    const div = document.createElement("div");
+    div.textContent = str;
+    return div.innerHTML;
 }
 
 // Vrátí appku na naposledy ohodnocený dárek, ať se dá hodnocení opravit.
@@ -273,5 +382,9 @@ function submitOnEnter(inputId, submitFn) {
 
 submitOnEnter("commentInput", submitVote);
 submitOnEnter("extraComment", saveExtraGift);
+
+// "change" (na rozdíl od "input") se spustí až po dokončení tahu/kliknutí,
+// takže samotné nastavení posuvníku rovnou odešle hodnocení.
+document.getElementById("scoreSlider").addEventListener("change", submitVote);
 
 loadRespondents();

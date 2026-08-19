@@ -31,6 +31,11 @@ function doGet(e) {
       return json(getUserVotes_(name));
     }
 
+    if (action === "myresponses") {
+      const name = (e.parameter.name || "").trim().toLowerCase();
+      return json(getUserResponses_(name));
+    }
+
     return json({ error: "Unknown action" });
   } catch (err) {
     return json({ error: String(err) });
@@ -145,6 +150,25 @@ function getUserVotes_(nameLower) {
   return values
     .filter(row => String(row[0]).trim().toLowerCase() === nameLower)
     .map(row => String(row[1]).trim());
+}
+
+function getUserResponses_(nameLower) {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Responses");
+  if (!sheet) return [];
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+
+  // B = jméno, C = dárek, D = kategorie, E = skóre, F = komentář
+  const values = sheet.getRange(2, 2, lastRow - 1, 5).getValues();
+
+  return values
+    .filter(row => String(row[0]).trim().toLowerCase() === nameLower)
+    .map(row => ({
+      gift: String(row[1]).trim(),
+      score: Number(row[3]),
+      comment: String(row[4] || "").trim()
+    }));
 }
 
 function addRespondentIfMissing_(name) {
