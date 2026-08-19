@@ -46,6 +46,10 @@
             📊 Přehled dárků
         </button>
 
+        <button type="button" class="secondary" id="highlightsButton" onclick="showHighlights()">
+            🏆 Zajímavosti
+        </button>
+
         <button type="button" class="secondary" id="addGiftScreenButton" onclick="showAddGiftScreen()">
             ➕ Přidat dárek
         </button>
@@ -97,14 +101,17 @@
 
     <div id="overviewScreen" class="card" style="display:none;">
         <h2>Přehled dárků</h2>
-        <p class="hint">Pořadí podle průměrného hodnocení všech hlasujících.</p>
-
-        <div id="overviewList"></div>
 
         <label for="personSelect">Odpovědi konkrétního člena rodiny</label>
         <select id="personSelect" onchange="onPersonSelected()">
             <option value="">— Vyber jméno —</option>
         </select>
+
+        <div class="divider"></div>
+
+        <p class="hint">Pořadí podle průměrného hodnocení všech hlasujících.</p>
+
+        <div id="overviewList"></div>
     </div>
 
     <div id="reviewScreen" class="card" style="display:none;">
@@ -115,6 +122,20 @@
         <h2 id="reviewTitle">Odpovědi</h2>
 
         <div id="reviewList"></div>
+    </div>
+
+    <div id="highlightsScreen" class="card" style="display:none;">
+        <h2>Zajímavosti</h2>
+
+        <h3>🏆 Nejoblíbenější</h3>
+        <div id="topFavoriteList"></div>
+
+        <h3>💔 Nejméně oblíbené</h3>
+        <div id="topUnpopularList"></div>
+
+        <h3>⚡ Nejkontroverznější</h3>
+        <p class="hint">Dárky, na kterých se rodina nejvíc neshodla.</p>
+        <div id="topControversialList"></div>
     </div>
 
     <div id="addGiftScreen" class="card" style="display:none;">
