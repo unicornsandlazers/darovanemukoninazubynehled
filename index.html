@@ -4,15 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rodinný průzkum dárků</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+<div class="topbar">
+    <button type="button" class="homeLink" onclick="location.reload()">
+        ← Domů
+    </button>
+    <div id="saveStatus" class="saveStatus"></div>
+</div>
+
 <div class="container">
 
-    <div id="saveStatus" class="saveStatus"></div>
-
-    <div id="loginScreen">
+    <div id="loginScreen" class="card">
         <h1>Rodinný průzkum dárků</h1>
 
         <label for="nameInput">Jak se jmenuješ?</label>
@@ -26,18 +34,18 @@
 
         <datalist id="respondentList"></datalist>
 
-        <button id="startButton" onclick="startSurvey()">
+        <button class="submit" id="startButton" onclick="startSurvey()">
             Začít
         </button>
 
         <button type="button" class="secondary" id="reviewButton" onclick="openReview()">
-            📋 Zobrazit / upravit moje odpovědi
+            📋 Zobrazit / upravit odpovědi
         </button>
 
         <p id="loginMessage" class="message"></p>
     </div>
 
-    <div id="surveyScreen" style="display:none;">
+    <div id="surveyScreen" class="card" style="display:none;">
         <div class="progress" id="progress"></div>
 
         <h2 id="giftName"></h2>
@@ -53,9 +61,9 @@
                 oninput="updateSliderValue(this, 'sliderValue')">
 
             <div class="sliderLabels">
-                <span>-10 Nevhodné</span>
-                <span>0 Nemám názor</span>
-                <span>+10 Ideální</span>
+                <span>Nevhodné</span>
+                <span>Nemám názor</span>
+                <span>Ideální</span>
             </div>
 
             <div class="sliderValue" id="sliderValue">0</div>
@@ -81,17 +89,13 @@
         </div>
     </div>
 
-    <div id="reviewScreen" style="display:none;">
-        <h2>Tvoje odpovědi</h2>
+    <div id="reviewScreen" class="card" style="display:none;">
+        <h2 id="reviewTitle">Odpovědi</h2>
 
         <div id="reviewList"></div>
-
-        <button type="button" class="secondary" onclick="location.reload()">
-            ↩ Zpět na úvod
-        </button>
     </div>
 
-    <div id="finishScreen" style="display:none;">
+    <div id="finishScreen" class="card" style="display:none;">
         <h2 id="finishTitle">Hotovo 🎉</h2>
 
         <button type="button" class="secondary" id="finishBackButton" onclick="goBack()" style="display:none;">
@@ -113,9 +117,9 @@
                 oninput="updateSliderValue(this, 'extraSliderValue')">
 
             <div class="sliderLabels">
-                <span>-10 Nevhodné</span>
-                <span>0 Nemám názor</span>
-                <span>+10 Ideální</span>
+                <span>Nevhodné</span>
+                <span>Nemám názor</span>
+                <span>Ideální</span>
             </div>
 
             <div class="sliderValue" id="extraSliderValue">0</div>
