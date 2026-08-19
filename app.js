@@ -778,7 +778,7 @@ async function submitNewGift() {
     try {
         const response = await fetch(API, {
             method: "POST",
-            body: JSON.stringify({ type: "addgift", gift: gift })
+            body: JSON.stringify({ type: "addgift", gift: gift, lang: lang })
         }).then(r => r.json());
 
         if (response.error) {

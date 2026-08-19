@@ -3,7 +3,8 @@
  *
  * Očekávaná struktura Google Sheetu (3 listy):
  * - "Respondents": sloupec A = jméno respondenta (řádek 1 = hlavička)
- * - "Gifts":       sloupec A = název dárku (řádek 1 = hlavička)
+ * - "Gifts":       sloupec A = název dárku, B = jazyk originálu (cs/sk/fr;
+ *                  prázdné/neplatné se bere jako cs) — řádek 1 = hlavička
  * - "Responses":   A = časová značka, B = jméno, C = dárek,
  *                  D = kategorie (odvozená ze skóre), E = skóre (-10..10),
  *                  F = komentář
@@ -15,6 +16,12 @@
  * LanguageApp do jazyka podle parametru "lang" (cs/sk/fr, výchozí cs),
  * s cachováním přes CacheService (6 hodin), ať appka zbytečně
  * nevytěžuje kvótu překladače a je rychlá.
+ *
+ * Zdrojový jazyk dárku (sloupec B v Gifts) appka posílá do LanguageApp
+ * explicitně místo automatické detekce — u krátkých/nejednoznačných
+ * názvů uměla automatická detekce špatně tipnout jazyk a vyrobit tak
+ * z překladu úplně jiné slovo. Když je cílový jazyk stejný jako
+ * originál, appka překlad rovnou přeskočí (vrátí originál beze změny).
  *
  * doGet akce: respondents, gifts, uservotes, myresponses, giftstats,
  *             highlights (všechny kromě uservotes/respondents přijímají
@@ -88,7 +95,9 @@ function doPost(e) {
       if (!data.gift || !data.gift.trim()) {
         return json({ error: "Chybí název dárku." });
       }
-      addGiftIfMissing_(data.gift.trim());
+      // Jazyk dárku odvozujeme z jazyka appky, ve kterém ho člověk zrovna
+      // psal — to je spolehlivější odhad než automatická detekce.
+      addGiftIfMissing_(data.gift.trim(), normalizeLang_(data.lang));
       return json({ success: true });
     }
 
@@ -127,7 +136,29 @@ function doPost(e) {
 }
 
 function normalizeLang_(lang) {
-  return SUPPORTED_LANGS.indexOf(lang) >= 0 ? lang : "cs";
+  const l = String(lang || "").trim().toLowerCase();
+  return SUPPORTED_LANGS.indexOf(l) >= 0 ? l : "cs";
+}
+
+// Mapa dárek → jazyk originálu, podle sloupce B v listu Gifts. Chybějící
+// nebo neplatná hodnota se bere jako "cs" (appka byla původně jen česká).
+function getGiftLanguageMap_() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Gifts");
+  if (!sheet) return {};
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return {};
+
+  const values = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+  const map = {};
+
+  values.forEach(row => {
+    const gift = String(row[0]).trim();
+    if (!gift) return;
+    map[gift] = normalizeLang_(row[1]);
+  });
+
+  return map;
 }
 
 function clampScore_(score) {
@@ -198,6 +229,7 @@ function getUserResponses_(nameLower, lang) {
 
   // B = jméno, C = dárek, D = kategorie, E = skóre, F = komentář
   const values = sheet.getRange(2, 2, lastRow - 1, 5).getValues();
+  const langMap = getGiftLanguageMap_();
 
   return values
     .filter(row => String(row[0]).trim().toLowerCase() === nameLower)
@@ -205,7 +237,10 @@ function getUserResponses_(nameLower, lang) {
       const gift = String(row[1]).trim();
       return {
         gift: gift,
-        giftDisplay: translateText_(gift, lang),
+        // U dárků mimo seznam Gifts (např. přidaných přes "další nápad"
+        // na konci dotazníku) jazyk originálu neznáme — tam se použije
+        // záložní automatická detekce v translateText_.
+        giftDisplay: translateText_(gift, langMap[gift], lang),
         score: Number(row[3]),
         comment: String(row[4] || "").trim()
       };
@@ -227,7 +262,7 @@ function addRespondentIfMissing_(name) {
   }
 }
 
-function addGiftIfMissing_(gift) {
+function addGiftIfMissing_(gift, giftLang) {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Gifts");
   if (!sheet) return;
 
@@ -236,14 +271,15 @@ function addGiftIfMissing_(gift) {
   const exists = existing.some(g => g.toLowerCase() === giftLower);
 
   if (!exists) {
-    sheet.appendRow([gift]);
+    sheet.appendRow([gift, giftLang]);
   }
 }
 
 function getGiftsWithDisplay_(lang) {
+  const langMap = getGiftLanguageMap_();
   return getColumnValues_("Gifts", 1).map(gift => ({
     gift: gift,
-    giftDisplay: translateText_(gift, lang)
+    giftDisplay: translateText_(gift, langMap[gift], lang)
   }));
 }
 
@@ -253,6 +289,7 @@ function getGiftsWithDisplay_(lang) {
 // názvu — u přeložených verzí by řazení mezi jazyky nesedělo).
 function getGiftStats_(lang) {
   const gifts = getColumnValues_("Gifts", 1);
+  const langMap = getGiftLanguageMap_();
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Responses");
 
   const sums = {};
@@ -283,7 +320,7 @@ function getGiftStats_(lang) {
     const count = counts[gift] || 0;
     const item = {
       gift: gift,
-      giftDisplay: translateText_(gift, lang),
+      giftDisplay: translateText_(gift, langMap[gift], lang),
       avgScore: count > 0 ? sums[gift] / count : null,
       voteCount: count
     };
@@ -307,6 +344,7 @@ function getGiftStats_(lang) {
 // nemá smysl.
 function getHighlights_(lang) {
   const gifts = getColumnValues_("Gifts", 1);
+  const langMap = getGiftLanguageMap_();
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Responses");
 
   const scoresByGift = {};
@@ -339,7 +377,7 @@ function getHighlights_(lang) {
 
       return {
         gift: gift,
-        giftDisplay: translateText_(gift, lang),
+        giftDisplay: translateText_(gift, langMap[gift], lang),
         avgScore: avg,
         voteCount: scores.length,
         min: Math.min.apply(null, scores),
@@ -378,16 +416,24 @@ function buildHistogram_(scores) {
 }
 
 // Přeloží text na požadovaný jazyk přes vestavěnou LanguageApp (Google
-// Translate, zdarma v rámci Apps Scriptu, bez API klíče). Zdrojový jazyk
-// necháváme na automatické detekci, ať to funguje bez ohledu na to, kdo
-// dárek původně napsal a v jakém jazyce. Výsledek se cachuje na 6 hodin
-// (maximum CacheService), ať se stejný text nepřekládá opakovaně a appka
-// zbytečně nevyčerpává kvótu překladače.
-function translateText_(text, lang) {
+// Translate, zdarma v rámci Apps Scriptu, bez API klíče). "sourceLang" by
+// měl být znám (ze sloupce Language v Gifts) — s explicitním zdrojovým
+// jazykem je překlad mnohem spolehlivější než s automatickou detekcí,
+// která u krátkých/nejednoznačných slov uměla uhodnout úplně jiný jazyk
+// a vyrobit z toho nesmyslný překlad. Pokud zdrojový jazyk neznáme (např.
+// u dárku přidaného mimo formulář "Přidat dárek"), použije se jako
+// záloha automatická detekce. Když je cílový jazyk stejný jako zdrojový,
+// překlad se rovnou přeskočí. Výsledek se cachuje na 6 hodin (maximum
+// CacheService), ať se stejný text nepřekládá opakovaně.
+function translateText_(text, sourceLang, targetLang) {
   if (!text) return text;
+  if (sourceLang && sourceLang === targetLang) return text;
 
   const cache = CacheService.getScriptCache();
-  const digest = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, text + "|" + lang);
+  const digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.MD5,
+    text + "|" + (sourceLang || "") + "|" + targetLang
+  );
   const cacheKey = "tr_" + Utilities.base64EncodeWebSafe(digest);
 
   const cached = cache.get(cacheKey);
@@ -395,7 +441,7 @@ function translateText_(text, lang) {
 
   let translated;
   try {
-    translated = LanguageApp.translate(text, "", lang);
+    translated = LanguageApp.translate(text, sourceLang || "", targetLang);
   } catch (err) {
     translated = text; // Když se překlad nepovede, ukážeme radši původní text než chybu.
   }
