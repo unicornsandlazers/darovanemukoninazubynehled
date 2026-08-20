@@ -390,12 +390,34 @@ function getHighlights_(lang) {
     })
     .filter(item => item !== null);
 
-  const topFavorite = stats.slice().sort((a, b) => b.avgScore - a.avgScore).slice(0, 5);
-  const topUnpopular = stats.slice().sort((a, b) => a.avgScore - b.avgScore).slice(0, 5);
+  // Vážený průměr (stejný princip jako např. IMDb žebříček): dárek s málo
+  // hlasy se přitáhne blíž k celkovému průměru přes všechny dárky, takže
+  // ho pár nadšených/naštvaných hlasů nevystřelí před dárek, který
+  // spolehlivě potvrdilo hodně lidí. "confidence" je průměrný počet
+  // hlasů na dárek — čím víc hlasů dárek má oproti tomuhle průměru, tím
+  // víc se počítá jeho vlastní skóre a míň se přitahuje ke globálu.
+  const totalVotes = stats.reduce((sum, item) => sum + item.voteCount, 0);
+  const totalScoreSum = stats.reduce((sum, item) => sum + item.avgScore * item.voteCount, 0);
+  const globalAvg = totalVotes > 0 ? totalScoreSum / totalVotes : 0;
+  const confidence = stats.length > 0 ? totalVotes / stats.length : 0;
+
+  stats.forEach(item => {
+    item.weightedScore =
+      (item.voteCount / (item.voteCount + confidence)) * item.avgScore +
+      (confidence / (item.voteCount + confidence)) * globalAvg;
+
+    // Kontroverznost = rozptyl hodnocení × váha podle počtu hlasů (odmocnina,
+    // ať to neroste přehnaně prudce) — rozpor potvrzený víc lidmi váží víc
+    // než stejně velký rozpor jen mezi dvěma hlasujícími.
+    item.controversyScore = item.stdev * Math.sqrt(item.voteCount);
+  });
+
+  const topFavorite = stats.slice().sort((a, b) => b.weightedScore - a.weightedScore).slice(0, 5);
+  const topUnpopular = stats.slice().sort((a, b) => a.weightedScore - b.weightedScore).slice(0, 5);
 
   const topControversial = stats
     .filter(item => item.voteCount >= 2)
-    .sort((a, b) => b.stdev - a.stdev)
+    .sort((a, b) => b.controversyScore - a.controversyScore)
     .slice(0, 5);
 
   return {
