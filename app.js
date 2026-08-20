@@ -746,13 +746,52 @@ function renderDistribution(histogram) {
         // vejde celá dovnitř pásu místo přesahu za okraj.
         const left = `calc(${radius}px + ${fraction} * (100% - ${size}px))`;
         const sign = h.score > 0 ? "+" : "";
-        const title = `${sign}${h.score}: ${voteCountLabel(h.count)}`;
+        const label = `${sign}${h.score}`;
+        const names = (h.names || []).join(", ");
 
-        return `<div class="distDot" style="left:${left}; width:${size}px; height:${size}px;" title="${title}"></div>`;
+        // title = nápověda při hoveru na počítači; klepnutí (showDotInfo)
+        // ukáže bublinu se jmény i na mobilu, kde hover nefunguje.
+        return `<div class="distDot" style="left:${left}; width:${size}px; height:${size}px;" ` +
+            `title="${escapeAttr(`${label}: ${voteCountLabel(h.count)}`)}" ` +
+            `data-label="${escapeAttr(label)}" data-names="${escapeAttr(names)}" ` +
+            `onclick="showDotInfo(this, event)"></div>`;
     }).join("");
 
     return `<div class="distStrip">${dots}</div>`;
 }
+
+function escapeAttr(str) {
+    return escapeHtml(str).replace(/"/g, "&quot;");
+}
+
+// Klepnutí na tečku ukáže/skryje bublinu se jmény hlasujících, kteří dali
+// dárku danou hodnotu — funguje i na mobilu, kde nativní title (hover)
+// nefunguje spolehlivě.
+function showDotInfo(dot, event) {
+    event.stopPropagation();
+
+    const wasOpen = dot.dataset.open === "true";
+    closeAllDotPopups();
+    if (wasOpen) return;
+
+    const names = dot.getAttribute("data-names");
+    const label = dot.getAttribute("data-label");
+
+    const popup = document.createElement("div");
+    popup.className = "distPopup";
+    popup.style.left = dot.style.left;
+    popup.textContent = names ? `${label}: ${names}` : label;
+
+    dot.parentElement.appendChild(popup);
+    dot.dataset.open = "true";
+}
+
+function closeAllDotPopups() {
+    document.querySelectorAll(".distPopup").forEach(p => p.remove());
+    document.querySelectorAll(".distDot").forEach(d => { d.dataset.open = "false"; });
+}
+
+document.addEventListener("click", closeAllDotPopups);
 
 function showAddGiftScreen() {
     document.getElementById("loginScreen").style.display = "none";
