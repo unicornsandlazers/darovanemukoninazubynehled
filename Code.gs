@@ -347,30 +347,32 @@ function getHighlights_(lang) {
   const langMap = getGiftLanguageMap_();
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Responses");
 
-  const scoresByGift = {};
+  const entriesByGift = {};
 
   if (sheet) {
     const lastRow = sheet.getLastRow();
     if (lastRow >= 2) {
-      // C = dárek, D = kategorie, E = skóre
-      const values = sheet.getRange(2, 3, lastRow - 1, 3).getValues();
+      // B = jméno, C = dárek, D = kategorie, E = skóre
+      const values = sheet.getRange(2, 2, lastRow - 1, 4).getValues();
 
       values.forEach(row => {
-        const gift = String(row[0]).trim();
-        const score = Number(row[2]);
+        const name = String(row[0]).trim();
+        const gift = String(row[1]).trim();
+        const score = Number(row[3]);
 
         if (!gift || isNaN(score)) return;
-        if (!scoresByGift[gift]) scoresByGift[gift] = [];
-        scoresByGift[gift].push(score);
+        if (!entriesByGift[gift]) entriesByGift[gift] = [];
+        entriesByGift[gift].push({ name: name, score: score });
       });
     }
   }
 
   const stats = gifts
     .map(gift => {
-      const scores = scoresByGift[gift];
-      if (!scores || scores.length === 0) return null;
+      const entries = entriesByGift[gift];
+      if (!entries || entries.length === 0) return null;
 
+      const scores = entries.map(e => e.score);
       const sum = scores.reduce((a, b) => a + b, 0);
       const avg = sum / scores.length;
       const variance = scores.reduce((acc, s) => acc + Math.pow(s - avg, 2), 0) / scores.length;
@@ -384,8 +386,9 @@ function getHighlights_(lang) {
         max: Math.max.apply(null, scores),
         stdev: Math.sqrt(variance),
         // Rozložení hlasů na škále -10..10, jen hodnoty s aspoň 1 hlasem
-        // (pro vizualizaci rozmístění hodnocení na obrazovce Zajímavosti).
-        histogram: buildHistogram_(scores)
+        // (pro vizualizaci rozmístění hodnocení na obrazovce Zajímavosti,
+        // včetně jmen, kdo danou hodnotu dal — jména se nepřekládají).
+        histogram: buildHistogram_(entries)
       };
     })
     .filter(item => item !== null);
@@ -427,13 +430,18 @@ function getHighlights_(lang) {
   };
 }
 
-function buildHistogram_(scores) {
-  const counts = {};
-  scores.forEach(s => { counts[s] = (counts[s] || 0) + 1; });
+function buildHistogram_(entries) {
+  const groups = {};
 
-  return Object.keys(counts).map(k => ({
+  entries.forEach(e => {
+    if (!groups[e.score]) groups[e.score] = [];
+    groups[e.score].push(e.name);
+  });
+
+  return Object.keys(groups).map(k => ({
     score: Number(k),
-    count: counts[k]
+    count: groups[k].length,
+    names: groups[k]
   }));
 }
 
